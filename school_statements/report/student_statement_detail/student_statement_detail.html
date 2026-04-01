@@ -1,0 +1,103 @@
+{% set company_doc = frappe.get_doc("Company", filters.company) %}
+{% set customer_doc = frappe.get_doc("Customer", filters.customer) %}
+{% set student_address_name = frappe.db.sql("""
+    SELECT a.name
+    FROM `tabAddress` a
+    INNER JOIN `tabDynamic Link` dl ON dl.parent = a.name
+    WHERE dl.link_doctype = 'Customer'
+      AND dl.link_name = %(customer)s
+      AND a.disabled = 0
+    ORDER BY a.is_primary_address DESC, a.modified DESC
+    LIMIT 1
+""", {"customer": filters.customer}, as_dict=True) %}
+{% set company_address_name = frappe.db.sql("""
+    SELECT a.name
+    FROM `tabAddress` a
+    INNER JOIN `tabDynamic Link` dl ON dl.parent = a.name
+    WHERE dl.link_doctype = 'Company'
+      AND dl.link_name = %(company)s
+      AND a.disabled = 0
+    ORDER BY a.is_primary_address DESC, a.modified DESC
+    LIMIT 1
+""", {"company": filters.company}, as_dict=True) %}
+{% set student_address = frappe.get_value("Address", student_address_name[0].name, "display") if student_address_name else "" %}
+{% set company_address = frappe.get_value("Address", company_address_name[0].name, "display") if company_address_name else "" %}
+{% set currency = frappe.get_cached_value("Company", filters.company, "default_currency") %}
+{% set grade_candidates = ["grade", "student_grade", "school_grade", "custom_grade"] %}
+{% set class_candidates = ["class", "student_class", "school_class", "custom_class"] %}
+{% set grade_field = None %}
+{% set class_field = None %}
+{% for f in grade_candidates %}{% if frappe.get_meta("Customer").get_field(f) and not grade_field %}{% set grade_field = f %}{% endif %}{% endfor %}
+{% for f in class_candidates %}{% if frappe.get_meta("Customer").get_field(f) and not class_field %}{% set class_field = f %}{% endif %}{% endfor %}
+<style>
+    .statement-wrap {font-family: Inter, Arial, sans-serif; color: #1f2937; font-size: 11px;}
+    .statement-header {width: 100%; border-bottom: 1px solid #d1d5db; padding-bottom: 12px; margin-bottom: 14px;}
+    .statement-header table {width: 100%; border-collapse: collapse;}
+    .statement-header td {vertical-align: top;}
+    .statement-title {font-size: 18px; font-weight: 700; margin-bottom: 8px;}
+    .logo-wrap {text-align: center; width: 20%;}
+    .logo-wrap img {max-height: 72px; max-width: 120px; object-fit: contain;}
+    .detail-block {line-height: 1.55; white-space: pre-line;}
+    .statement-table {width: 100%; border-collapse: collapse; margin-top: 8px;}
+    .statement-table th, .statement-table td {border: 1px solid #d1d5db; padding: 6px; vertical-align: top;}
+    .statement-table th {background: #f8fafc; text-align: left; font-weight: 700;}
+    .num {text-align: right; white-space: nowrap;}
+    .summary-row {font-weight: 700; background: #f9fafb;}
+</style>
+<div class="statement-wrap">
+    <div class="statement-header">
+        <table>
+            <tr>
+                <td style="width: 40%;">
+                    <div class="statement-title">Student Statement</div>
+                    <div class="detail-block">
+                        <strong>Name:</strong> {{ customer_doc.customer_name or customer_doc.name }}<br>
+                        {% if student_address %}<strong>Address:</strong> {{ student_address }}<br>{% endif %}
+                        {% if class_field and customer_doc.get(class_field) %}<strong>Class:</strong> {{ customer_doc.get(class_field) }}<br>{% endif %}
+                        {% if grade_field and customer_doc.get(grade_field) %}<strong>Grade:</strong> {{ customer_doc.get(grade_field) }}<br>{% endif %}
+                        <strong>Term / Period:</strong> {{ frappe.utils.formatdate(filters.from_date) }} to {{ frappe.utils.formatdate(filters.to_date) }}<br>
+                        {% if customer_doc.mobile_no %}<strong>Phone:</strong> {{ customer_doc.mobile_no }}<br>{% endif %}
+                        {% if customer_doc.email_id %}<strong>Email:</strong> {{ customer_doc.email_id }}<br>{% endif %}
+                    </div>
+                </td>
+                <td class="logo-wrap">
+                    {% if company_doc.get("company_logo") %}<img src="{{ company_doc.get('company_logo') }}" alt="School Logo">{% endif %}
+                </td>
+                <td style="width: 40%; text-align: right;">
+                    <div class="detail-block" style="text-align: right;">
+                        <strong>{{ company_doc.company_name }}</strong><br>
+                        {% if company_address %}{{ company_address }}<br>{% endif %}
+                        {% if company_doc.phone_no %}{{ company_doc.phone_no }}<br>{% endif %}
+                        {% if company_doc.email %}{{ company_doc.email }}<br>{% endif %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th style="width: 11%;">Date</th>
+                <th style="width: 29%;">Description</th>
+                <th style="width: 16%;">Type</th>
+                <th style="width: 18%;">Invoice No. / Receipt No.</th>
+                <th class="num" style="width: 8%;">Dr</th>
+                <th class="num" style="width: 8%;">Cr</th>
+                <th class="num" style="width: 10%;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr class="{% if row.description in ["Balance b/d", "Balance c/d"] %}summary-row{% endif %}">
+                <td>{{ frappe.utils.formatdate(row.posting_date) }}</td>
+                <td>{{ row.description }}</td>
+                <td>{{ row.voucher_type or "" }}</td>
+                <td>{{ row.reference_no or "" }}</td>
+                <td class="num">{{ format_currency(row.debit or 0, currency) }}</td>
+                <td class="num">{{ format_currency(row.credit or 0, currency) }}</td>
+                <td class="num">{{ format_currency(row.running_balance or 0, currency) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

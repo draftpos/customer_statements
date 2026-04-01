@@ -1,0 +1,12 @@
+include *.md
+include *.txt
+recursive-include school_statements *.css
+recursive-include school_statements *.csv
+recursive-include school_statements *.html
+recursive-include school_statements *.js
+recursive-include school_statements *.json
+recursive-include school_statements *.md
+recursive-include school_statements *.png
+recursive-include school_statements *.py
+recursive-include school_statements *.svg
+recursive-exclude school_statements *.pyc
