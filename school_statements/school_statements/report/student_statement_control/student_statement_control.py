@@ -65,5 +65,4 @@ def execute(filters=None):
         }
     )
 
-    data = get_statement_summary_rows(filters)
-    return columns, data
+    return columns, get_statement_summary_rows(filters)

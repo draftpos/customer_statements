@@ -65,9 +65,8 @@ def preview_student_statement(filters=None):
     parsed_filters = _parse_filters(filters)
     customer = parsed_filters.get("customer")
     if not customer:
-        frappe.throw(_("Customer is required."))
-    context = build_statement_context(parsed_filters, customer)
-    return context
+        frappe.throw(_("Student is required."))
+    return build_statement_context(parsed_filters, customer)
 
 
 @frappe.whitelist()

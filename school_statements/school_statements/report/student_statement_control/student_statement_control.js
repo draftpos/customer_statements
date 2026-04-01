@@ -55,11 +55,17 @@ frappe.query_reports["Student Statement Control"] = {
 
     onload(report) {
         report.page.add_inner_button(__("Bulk Download ZIP"), async () => {
-            await school_statements_bulk_action(report, "school_statements.school_statements.api.download_student_statements_zip");
+            await school_statements_bulk_action(
+                report,
+                "school_statements.school_statements.api.download_student_statements_zip"
+            );
         });
 
         report.page.add_inner_button(__("Bulk Print PDF"), async () => {
-            await school_statements_bulk_action(report, "school_statements.school_statements.api.download_student_statements_merged_pdf");
+            await school_statements_bulk_action(
+                report,
+                "school_statements.school_statements.api.download_student_statements_merged_pdf"
+            );
         });
 
         report.page.add_inner_button(__("Open Single Student Statement"), async () => {

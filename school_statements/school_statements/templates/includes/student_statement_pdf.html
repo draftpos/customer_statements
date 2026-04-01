@@ -1,0 +1,190 @@
+{% set currency = currency or frappe.get_cached_value("Company", filters.company, "default_currency") %}
+
+<style>
+    @page {
+        size: A4;
+        margin: 10mm 10mm 10mm 10mm;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 210mm;
+        min-height: 297mm;
+        font-family: "Times New Roman", Times, serif;
+        color: #000000;
+        background: #ffffff;
+        font-size: 12pt;
+    }
+
+    .statement-wrap {
+        width: 190mm;
+        min-height: 277mm;
+        margin: 0 auto;
+        font-family: "Times New Roman", Times, serif;
+        color: #000000;
+        font-size: 12pt;
+    }
+
+    .statement-header {
+        width: 100%;
+        border-bottom: 1px solid #000000;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+    }
+
+    .statement-header table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .statement-header td {
+        vertical-align: top;
+        padding: 0;
+    }
+
+    .statement-title {
+        font-size: 16pt;
+        font-weight: 700;
+        margin-bottom: 4px;
+        line-height: 1.1;
+    }
+
+    .logo-wrap {
+        text-align: center;
+        width: 20%;
+        padding-top: 4px;
+    }
+
+    .logo-wrap img {
+        max-height: 60px;
+        max-width: 100px;
+        object-fit: contain;
+    }
+
+    .detail-block {
+        line-height: 1.25;
+        white-space: normal;
+        font-size: 12pt;
+    }
+
+    .detail-block div {
+        margin: 0 0 2px 0;
+    }
+
+    .school-block {
+        text-align: right;
+        line-height: 1.25;
+        font-size: 12pt;
+    }
+
+    .school-block div {
+        margin: 0 0 2px 0;
+    }
+
+    .statement-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 6px;
+        table-layout: fixed;
+        font-size: 10pt;
+    }
+
+    .statement-table th,
+    .statement-table td {
+        border: 1px solid #000000;
+        padding: 4px 5px;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.15;
+    }
+
+    .statement-table th {
+        background: #ffffff;
+        text-align: left;
+        font-weight: 700;
+    }
+
+    .num {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .summary-row {
+        font-weight: 700;
+    }
+
+    .muted {
+        color: #000000;
+        font-size: 9pt;
+    }
+</style>
+
+<div class="statement-wrap">
+    <div class="statement-header">
+        <table>
+            <tr>
+                <td style="width: 40%;">
+                    <div class="statement-title">Student Statement</div>
+                    <div class="detail-block">
+                        <div><strong>Name:</strong> {{ student.customer_name or student.customer }}</div>
+                        {% if student.address %}<div><strong>Address:</strong> {{ student.address }}</div>{% endif %}
+                        {% if student.student_class %}<div><strong>Class:</strong> {{ student.student_class }}</div>{% endif %}
+                        {% if student.grade %}<div><strong>Grade:</strong> {{ student.grade }}</div>{% endif %}
+                        <div><strong>Period:</strong> {{ frappe.utils.formatdate(filters.from_date) }} to {{ frappe.utils.formatdate(filters.to_date) }}</div>
+                        {% if student.mobile_no %}<div><strong>Phone:</strong> {{ student.mobile_no }}</div>{% endif %}
+                        {% if student.email_id %}<div><strong>Email:</strong> {{ student.email_id }}</div>{% endif %}
+                    </div>
+                </td>
+
+                <td class="logo-wrap">
+                    {% if school.logo %}
+                    <img src="{{ school.logo }}" alt="School Logo">
+                    {% endif %}
+                </td>
+
+                <td style="width: 40%; text-align: right;">
+                    <div class="school-block">
+                        <div><strong>{{ school.company_name }}</strong></div>
+                        {% if school.address %}<div>{{ school.address }}</div>{% endif %}
+                        {% if school.phone_no %}<div>{{ school.phone_no }}</div>{% endif %}
+                        {% if school.email %}<div>{{ school.email }}</div>{% endif %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th style="width: 11%;">Date</th>
+                <th style="width: 29%;">Description</th>
+                <th style="width: 15%;">Type</th>
+                <th style="width: 17%;">Ref No.</th>
+                <th class="num" style="width: 9%;">Dr</th>
+                <th class="num" style="width: 9%;">Cr</th>
+                <th class="num" style="width: 10%;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr class="{% if row.is_opening or row.is_closing %}summary-row{% endif %}">
+                <td>{{ row.display_date }}</td>
+                <td>{{ row.description }}</td>
+                <td>{{ row.voucher_type or "" }}</td>
+                <td>{{ row.reference_no or "" }}</td>
+                <td class="num">{{ frappe.format(row.debit or 0, {"fieldtype": "Currency", "options": currency}) }}</td>
+                <td class="num">{{ frappe.format(row.credit or 0, {"fieldtype": "Currency", "options": currency}) }}</td>
+                <td class="num">{{ frappe.format(row.running_balance or 0, {"fieldtype": "Currency", "options": currency}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 8px;" class="muted">
+        Generated on {{ frappe.utils.format_datetime(generated_on) }}
+    </div>
+</div>

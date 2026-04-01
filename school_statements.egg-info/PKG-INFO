@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: school_statements
+Version: 0.0.1
+Summary: School statements and bulk statement generation for ERPNext
+Author: OpenAI
+Author-email: support@example.com
+Dynamic: author
+Dynamic: author-email
+Dynamic: summary

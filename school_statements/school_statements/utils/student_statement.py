@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import shutil
 import zipfile
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,6 +14,17 @@ GRADE_FIELD_CANDIDATES = ["grade", "student_grade", "school_grade", "custom_grad
 CLASS_FIELD_CANDIDATES = ["class", "student_class", "school_class", "custom_class"]
 
 DETAIL_TEMPLATE = "school_statements/templates/includes/student_statement_pdf.html"
+
+PDF_OPTIONS = {
+    "page-size": "A4",
+    "margin-top": "10mm",
+    "margin-bottom": "10mm",
+    "margin-left": "10mm",
+    "margin-right": "10mm",
+    "encoding": "UTF-8",
+    "print-media-type": None,
+    "disable-smart-shrinking": None,
+}
 
 
 def _field_exists(doctype: str, fieldname: str) -> bool:
@@ -99,7 +111,7 @@ def get_students_for_batch(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     grade_select = f"c.`{fields['grade_field']}` AS grade" if fields.get("grade_field") else "NULL AS grade"
     class_select = f"c.`{fields['class_field']}` AS student_class" if fields.get("class_field") else "NULL AS student_class"
 
-    rows = frappe.db.sql(
+    return frappe.db.sql(
         f"""
         SELECT
             c.name AS customer,
@@ -115,7 +127,6 @@ def get_students_for_batch(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         values,
         as_dict=True,
     )
-    return rows
 
 
 def _get_currency(company: str) -> str:
@@ -161,7 +172,7 @@ def _get_party_closing_balance(company: str, customer: str, to_date: str) -> flo
 
 
 def _get_statement_entries(company: str, customer: str, from_date: str, to_date: str) -> List[Dict[str, Any]]:
-    rows = frappe.db.sql(
+    return frappe.db.sql(
         """
         SELECT
             gle.name,
@@ -186,7 +197,6 @@ def _get_statement_entries(company: str, customer: str, from_date: str, to_date:
         {"company": company, "customer": customer, "from_date": from_date, "to_date": to_date},
         as_dict=True,
     )
-    return rows
 
 
 def _get_formatted_address_for_linked_party(link_doctype: str, link_name: str) -> str:
@@ -219,7 +229,7 @@ def _get_company_logo(company: str) -> Optional[str]:
 
 def _get_customer_details(customer: str, fields: Dict[str, Optional[str]]) -> Dict[str, Any]:
     customer_doc = frappe.get_cached_doc("Customer", customer)
-    details = {
+    return {
         "customer": customer_doc.name,
         "customer_name": customer_doc.customer_name,
         "customer_group": customer_doc.customer_group,
@@ -229,7 +239,6 @@ def _get_customer_details(customer: str, fields: Dict[str, Optional[str]]) -> Di
         "grade": getattr(customer_doc, fields["grade_field"], None) if fields.get("grade_field") else None,
         "student_class": getattr(customer_doc, fields["class_field"], None) if fields.get("class_field") else None,
     }
-    return details
 
 
 def _get_school_details(company: str) -> Dict[str, Any]:
@@ -277,16 +286,14 @@ def build_statement_rows(filters: Dict[str, Any], customer: str) -> Tuple[List[D
         credit = flt(entry.get("credit"))
         running_balance += debit - credit
 
-        reference_no = entry.get("voucher_no")
-        description = entry.get("remarks") or entry.get("voucher_type") or ""
         rows.append(
             {
                 "posting_date": entry.get("posting_date"),
                 "display_date": formatdate(entry.get("posting_date")),
                 "voucher_type": entry.get("voucher_type"),
                 "voucher_no": entry.get("voucher_no"),
-                "reference_no": reference_no,
-                "description": description,
+                "reference_no": entry.get("voucher_no") or "",
+                "description": entry.get("remarks") or entry.get("voucher_type") or "",
                 "debit": debit,
                 "credit": credit,
                 "running_balance": running_balance,
@@ -319,28 +326,32 @@ def build_statement_context(filters: Dict[str, Any], customer: str) -> Dict[str,
     filters = validate_filters(filters)
     fields = get_customer_dimension_fields()
     currency = _get_currency(filters["company"])
-
     rows, opening_balance, closing_balance = build_statement_rows(filters, customer)
-    school = _get_school_details(filters["company"])
-    student = _get_customer_details(customer, fields)
 
-    context = {
+    return {
         "title": "Student Statement",
         "filters": filters,
         "currency": currency,
-        "school": school,
-        "student": student,
+        "school": _get_school_details(filters["company"]),
+        "student": _get_customer_details(customer, fields),
         "rows": rows,
         "opening_balance": opening_balance,
         "closing_balance": closing_balance,
         "generated_on": now_datetime(),
     }
-    return context
 
 
 def render_statement_html(filters: Dict[str, Any], customer: str) -> str:
     context = build_statement_context(filters, customer)
     return frappe.render_template(DETAIL_TEMPLATE, context)
+
+
+def _assert_wkhtmltopdf() -> None:
+    if not shutil.which("wkhtmltopdf"):
+        frappe.throw(
+            _("wkhtmltopdf is not installed on this server. Install wkhtmltopdf to enable PDF downloads."),
+            title=_("Missing PDF Engine"),
+        )
 
 
 def _save_private_file(file_name: str, content: bytes, is_private: int = 1):
@@ -356,9 +367,17 @@ def _save_private_file(file_name: str, content: bytes, is_private: int = 1):
     return file_doc
 
 
+def _sanitize_file_component(value: Optional[str], fallback: str) -> str:
+    cleaned = cstr(value or fallback).strip()
+    for bad in ['/', '\\', ':', '*', '?', '"', '<', '>', '|']:
+        cleaned = cleaned.replace(bad, "-")
+    return cleaned or fallback
+
+
 def render_statement_pdf_bytes(filters: Dict[str, Any], customer: str) -> bytes:
+    _assert_wkhtmltopdf()
     html = render_statement_html(filters, customer)
-    return get_pdf(html)
+    return get_pdf(html, PDF_OPTIONS)
 
 
 def render_statement_zip_file(filters: Dict[str, Any]):
@@ -372,12 +391,12 @@ def render_statement_zip_file(filters: Dict[str, Any]):
     with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
         for student in students:
             pdf_bytes = render_statement_pdf_bytes(filters, student["customer"])
-            safe_name = cstr(student.get("customer_name") or student["customer"]).replace("/", "-")
+            safe_name = _sanitize_file_component(student.get("customer_name") or student["customer"], student["customer"])
             zip_file.writestr(f"{safe_name}.pdf", pdf_bytes)
 
     zip_buffer.seek(0)
-    class_bit = filters.get("student_class") or "all-classes"
-    grade_bit = filters.get("grade") or "all-grades"
+    class_bit = _sanitize_file_component(filters.get("student_class"), "all-classes")
+    grade_bit = _sanitize_file_component(filters.get("grade"), "all-grades")
     file_name = f"Student Statements {filters['company']} {grade_bit} {class_bit}.zip"
     return _save_private_file(file_name, zip_buffer.read())
 
@@ -389,6 +408,8 @@ def render_batch_pdf_file(filters: Dict[str, Any]):
     if not students:
         frappe.throw(_("No students matched the selected filters."))
 
+    _assert_wkhtmltopdf()
+
     statements_html: List[str] = []
     for idx, student in enumerate(students):
         html = render_statement_html(filters, student["customer"])
@@ -397,9 +418,9 @@ def render_batch_pdf_file(filters: Dict[str, Any]):
         statements_html.append(html)
 
     merged_html = "".join(statements_html)
-    pdf_bytes = get_pdf(merged_html)
-    class_bit = filters.get("student_class") or "all-classes"
-    grade_bit = filters.get("grade") or "all-grades"
+    pdf_bytes = get_pdf(merged_html, PDF_OPTIONS)
+    class_bit = _sanitize_file_component(filters.get("student_class"), "all-classes")
+    grade_bit = _sanitize_file_component(filters.get("grade"), "all-grades")
     file_name = f"Student Statements {filters['company']} {grade_bit} {class_bit}.pdf"
     return _save_private_file(file_name, pdf_bytes)
 
@@ -412,7 +433,7 @@ def get_statement_summary_rows(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     grade_select = f"c.`{fields['grade_field']}` AS grade" if fields.get("grade_field") else "NULL AS grade"
     class_select = f"c.`{fields['class_field']}` AS student_class" if fields.get("class_field") else "NULL AS student_class"
 
-    rows = frappe.db.sql(
+    return frappe.db.sql(
         f"""
         SELECT
             gle.party AS customer,
@@ -440,4 +461,3 @@ def get_statement_summary_rows(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         values,
         as_dict=True,
     )
-    return rows

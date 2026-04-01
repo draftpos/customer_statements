@@ -48,13 +48,13 @@ def get_columns():
         },
         {
             "fieldname": "voucher_type",
-            "label": _("Voucher Type"),
+            "label": _("Type"),
             "fieldtype": "Data",
             "width": 150,
         },
         {
             "fieldname": "reference_no",
-            "label": _("Invoice No. / Receipt No."),
+            "label": _("Ref No."),
             "fieldtype": "Data",
             "width": 180,
         },
