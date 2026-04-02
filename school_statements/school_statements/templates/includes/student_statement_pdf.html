@@ -3,34 +3,31 @@
 <style>
     @page {
         size: A4;
-        margin: 10mm 10mm 10mm 10mm;
+        margin: 8mm 8mm 8mm 8mm;
     }
 
     html, body {
         margin: 0;
         padding: 0;
-        width: 210mm;
-        min-height: 297mm;
         font-family: "Times New Roman", Times, serif;
-        color: #000000;
-        background: #ffffff;
         font-size: 12pt;
+        color: #000;
+        background: #fff;
     }
 
     .statement-wrap {
-        width: 190mm;
-        min-height: 277mm;
-        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
         font-family: "Times New Roman", Times, serif;
-        color: #000000;
         font-size: 12pt;
+        color: #000;
     }
 
     .statement-header {
         width: 100%;
-        border-bottom: 1px solid #000000;
-        padding-bottom: 6px;
-        margin-bottom: 8px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
     }
 
     .statement-header table {
@@ -47,64 +44,60 @@
     .statement-title {
         font-size: 16pt;
         font-weight: 700;
-        margin-bottom: 4px;
-        line-height: 1.1;
+        line-height: 1.05;
+        margin-bottom: 2px;
     }
 
-    .logo-wrap {
-        text-align: center;
-        width: 20%;
-        padding-top: 4px;
-    }
-
-    .logo-wrap img {
-        max-height: 60px;
-        max-width: 100px;
-        object-fit: contain;
-    }
-
-    .detail-block {
-        line-height: 1.25;
-        white-space: normal;
+    .detail-block,
+    .school-block {
         font-size: 12pt;
+        line-height: 1.15;
     }
 
-    .detail-block div {
-        margin: 0 0 2px 0;
+    .detail-block div,
+    .school-block div {
+        margin: 0 0 1px 0;
     }
 
     .school-block {
         text-align: right;
-        line-height: 1.25;
-        font-size: 12pt;
     }
 
-    .school-block div {
-        margin: 0 0 2px 0;
+    .logo-wrap {
+        width: 16%;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .logo-wrap img {
+        max-width: 80px;
+        max-height: 50px;
+        object-fit: contain;
     }
 
     .statement-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 6px;
         table-layout: fixed;
-        font-size: 10pt;
+        font-size: 9pt;
+        margin-top: 4px;
     }
 
     .statement-table th,
     .statement-table td {
-        border: 1px solid #000000;
-        padding: 4px 5px;
+        border: 1px solid #000;
+        padding: 3px 4px;
         vertical-align: top;
-        word-wrap: break-word;
+        line-height: 1.1;
+        box-sizing: border-box;
+        word-break: break-word;
         overflow-wrap: break-word;
-        line-height: 1.15;
     }
 
     .statement-table th {
-        background: #ffffff;
         text-align: left;
         font-weight: 700;
+        background: #fff;
     }
 
     .num {
@@ -116,8 +109,8 @@
         font-weight: 700;
     }
 
-    .muted {
-        color: #000000;
+    .footer-note {
+        margin-top: 6px;
         font-size: 9pt;
     }
 </style>
@@ -126,7 +119,7 @@
     <div class="statement-header">
         <table>
             <tr>
-                <td style="width: 40%;">
+                <td style="width: 42%;">
                     <div class="statement-title">Student Statement</div>
                     <div class="detail-block">
                         <div><strong>Name:</strong> {{ student.customer_name or student.customer }}</div>
@@ -141,11 +134,11 @@
 
                 <td class="logo-wrap">
                     {% if school.logo %}
-                    <img src="{{ school.logo }}" alt="School Logo">
+                        <img src="{{ school.logo }}" alt="School Logo">
                     {% endif %}
                 </td>
 
-                <td style="width: 40%; text-align: right;">
+                <td style="width: 42%;">
                     <div class="school-block">
                         <div><strong>{{ school.company_name }}</strong></div>
                         {% if school.address %}<div>{{ school.address }}</div>{% endif %}
@@ -161,11 +154,11 @@
         <thead>
             <tr>
                 <th style="width: 11%;">Date</th>
-                <th style="width: 29%;">Description</th>
+                <th style="width: 30%;">Description</th>
                 <th style="width: 15%;">Type</th>
-                <th style="width: 17%;">Ref No.</th>
-                <th class="num" style="width: 9%;">Dr</th>
-                <th class="num" style="width: 9%;">Cr</th>
+                <th style="width: 18%;">Ref No.</th>
+                <th class="num" style="width: 8%;">Dr</th>
+                <th class="num" style="width: 8%;">Cr</th>
                 <th class="num" style="width: 10%;">Balance</th>
             </tr>
         </thead>
@@ -184,7 +177,7 @@
         </tbody>
     </table>
 
-    <div style="margin-top: 8px;" class="muted">
+    <div class="footer-note">
         Generated on {{ frappe.utils.format_datetime(generated_on) }}
     </div>
 </div>
