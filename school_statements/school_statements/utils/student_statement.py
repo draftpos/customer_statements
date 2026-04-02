@@ -17,10 +17,10 @@ DETAIL_TEMPLATE = "school_statements/templates/includes/student_statement_pdf.ht
 
 PDF_OPTIONS = {
     "page-size": "A4",
-    "margin-top": "10mm",
-    "margin-bottom": "10mm",
-    "margin-left": "10mm",
-    "margin-right": "10mm",
+    "margin-top": "8mm",
+    "margin-bottom": "8mm",
+    "margin-left": "8mm",
+    "margin-right": "8mm",
     "encoding": "UTF-8",
     "print-media-type": None,
     "disable-smart-shrinking": None,
@@ -413,9 +413,10 @@ def render_batch_pdf_file(filters: Dict[str, Any]):
     statements_html: List[str] = []
     for idx, student in enumerate(students):
         html = render_statement_html(filters, student["customer"])
-        if idx > 0:
-            statements_html.append('<div style="page-break-before: always;"></div>')
-        statements_html.append(html)
+        wrapped_html = f'<div style="width:100%; box-sizing:border-box;">{html}</div>'
+        statements_html.append(wrapped_html)
+        if idx < len(students) - 1:
+            statements_html.append('<div style="page-break-after: always;"></div>')
 
     merged_html = "".join(statements_html)
     pdf_bytes = get_pdf(merged_html, PDF_OPTIONS)
